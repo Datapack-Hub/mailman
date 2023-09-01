@@ -1,38 +1,16 @@
-# create-svelte
+![](https://cdn.discordapp.com/attachments/1129493191847071875/1147217243751583865/image.png)
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
+# Mailman
+Mailman is a tool which lets you upload your datapack versions to Datapack Hub, Modrinth, and Smithed at the same time. 
 
-## Creating a project
+Upload your datapack, enter your API tokens, add version details, and then push your datapack to all sites at once.
 
-If you're seeing this, you've probably already done this step. Congrats!
+**Website**: https://mailman.datapackhub.net/
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+## How to use
+The website is designed to be very easy to use if you are familiar with uploading versions on other sites.
+1. Upload your datapack (you can drag-and-drop it onto the site)
+2. Enter your API tokens for DPH, Modrinth, and Smithed.
+3. Pick the project that you want to add the version to.
+4. Enter the relevant details (version title, code, changelog, minecraft versions, dependencies)
+5. Hit Upload, and you're done!
