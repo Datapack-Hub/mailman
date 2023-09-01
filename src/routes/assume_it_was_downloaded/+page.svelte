@@ -5,9 +5,10 @@ import autoAnimate from "@formkit/auto-animate";
 let page = 1;
 </script>
 
+<div class="flex h-screen justify-around items-center">
 <div class="flex flex-col items-center space-y-10">
     <div class="flex flex-col items-center space-y-2">
-        <div class="flex items-center mt-20">
+        <div class="flex items-center">
             <img src="/dph.png" class="h-20 mr-2" alt="logo">
             <h1><b class="text-7xl">Mailman</b> <span class="text-base">by Datapack Hub</span></h1>
         </div>
@@ -73,4 +74,5 @@ let page = 1;
     </div>
     
     
+</div>
 </div>
