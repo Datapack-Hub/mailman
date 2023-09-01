@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+input {
+    @apply w-full bg-zinc-900 rounded-md h-8 focus:outline-orange-600 focus:outline focus:outline-2 p-1 placeholder:text-zinc-600;
+}
+
+textarea {
+    @apply w-full bg-zinc-900 rounded-md h-32 resize-y focus:outline-orange-600 focus:outline focus:outline-2 p-1 placeholder:text-zinc-600;
+}
