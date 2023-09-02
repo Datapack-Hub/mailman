@@ -29,6 +29,7 @@
 	"dependencies": {
 		"@formkit/auto-animate": "^0.7.0",
 		"formkit": "^0.19.3",
-		"svelte-file-dropzone": "^2.0.2"
+		"svelte-file-dropzone": "^2.0.2",
+		"svelte-multiselect": "^10.1.0"
 	}
 }

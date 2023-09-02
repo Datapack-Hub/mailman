@@ -7,5 +7,21 @@ input {
 }
 
 textarea {
-    @apply w-full bg-zinc-900 rounded-md h-32 resize-y focus:outline-orange-600 focus:outline focus:outline-2 p-1 placeholder:text-zinc-600;
+    @apply w-full bg-zinc-900 rounded-md h-12 resize-y focus:outline-orange-600 focus:outline focus:outline-2 p-1 placeholder:text-zinc-600;
+}
+
+select {
+    @apply w-full bg-zinc-900 rounded-md h-8 focus:outline-orange-600 focus:outline focus:outline-2 p-1 placeholder:text-zinc-600;
+}
+
+.styled-scrollbar::-webkit-scrollbar {
+    width: 0.15rem;
+}
+
+.styled-scrollbar::-webkit-scrollbar-track {
+    @apply rounded-full bg-zinc-800;
+}
+
+.styled-scrollbar::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-zinc-500;
 }
