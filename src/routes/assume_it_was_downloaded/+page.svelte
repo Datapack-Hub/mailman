@@ -3,13 +3,105 @@ import Dots from "$lib/Dots.svelte";
 import autoAnimate from "@formkit/auto-animate";
 import { MultiSelect } from "svelte-multiselect";
 
+// Smithed stuff
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithEmailAndPassword, getIdToken, type User } from "firebase/auth";
+
+initializeApp({
+    databaseURL: "https://mc-smithed-default-rtdb.firebaseio.com",
+    apiKey: "AIzaSyDX-vLCBhO8StKAxnpvQ2EW8lz3kzYn4Qk",
+    authDomain: "mc-smithed.firebaseapp.com",
+    projectId: "mc-smithed",
+    storageBucket: "mc-smithed.appspot.com",
+    messagingSenderId: "574184244682",
+    appId: "1:574184244682:web:498d168c09b39e4f0d7b33",
+    measurementId: "G-40SRKC35Z0"
+})
+
+let smithedEmail: string;
+let smithedPassword: string;
+
+async function logIntoSmithed(email: string, password: string) {
+    const auth = getAuth();
+    let smithedToken: string | null = null;
+    let smithedUser: User | null = null;
+
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        const tok = await getIdToken(user);
+        const smithedApiTokenReq = await fetch(`https://api.smithed.dev/v2/token?token=${tok}&expires=1d`);
+        const smithedApiToken = await smithedApiTokenReq.text();
+        smithedToken = smithedApiToken;
+        smithedUser = userCredential.user;
+    } catch (error: any) {
+        alert("There was an error: " + error.message);
+    }
+
+    return {token: smithedToken, user: smithedUser};
+}
+
+// Auth
+let authedSmithed: null | {displayName: string, cleanName: string, creationTime: number, uid: string, pfp: string | undefined} = null;
+let smithedPacks:{
+  id: string
+  display: {
+    name: string
+    description: string
+    icon: string
+    hidden: boolean
+    webPage: string | undefined
+  }
+  versions: string[]
+  categories: string[]
+}[] = [];
+
+let authedDph = false;
+let authedModrinth = false;
+
+async function authSmithed(){
+    let smithed = await logIntoSmithed(smithedEmail,smithedPassword)
+    if(smithed.user){
+        let smithedUserData = await fetch("https://api.smithed.dev/v2/users/" + smithed.user.uid)
+        if(smithedUserData.ok){
+            let smithedUserParsed = await smithedUserData.json()
+
+            let smithedUserPacks = await fetch(`https://api.smithed.dev/v2/users/${smithed.user.uid}/packs`)
+            if(smithedUserPacks.ok){
+                let tempPacks = smithedPacks;
+                let smithedUserPacksParsed = await smithedUserPacks.json() as string[]
+                for(let id in smithedUserPacksParsed){
+                    let smithedPack = await fetch(`https://api.smithed.dev/v2/packs/${smithedUserPacksParsed[id]}`)
+                    if(smithedPack.ok){
+                        let smithedPackParsed = await smithedPack.json()
+                        console.log(smithedPackParsed)
+                        tempPacks.push(smithedPackParsed)
+                    }
+                }
+                smithedPacks = tempPacks
+                console.log("Smithed Packs: " + smithedPacks);
+            }else{
+                alert("Error fetching your Smithed packs.")
+            }
+
+            authedSmithed = smithedUserParsed;
+        } else{
+            alert("Error loading your Smithed user data.")
+        }
+    }
+}
+
+async function getSmithedPacks(){
+    
+}
+
 let rpLabel: HTMLLabelElement;
 let rpInput: HTMLInputElement;
 function uploadRP(){
     rpLabel.innerHTML = `<span class="text-slate-200">${rpInput.files?.item(0).name} (click to change)</span>`
 }
 
-let page = 3;
+let page = 1;
 
 let fileInput: HTMLInputElement;
 
@@ -85,9 +177,19 @@ let releaseChannel: "release" | "beta" | "alpha" = "release"
                             <img src="/smithed.svg" class="h-8 rounded-full bg-[#1b48c4]" alt="logo">
                             <b>Smithed</b>
                         </div>
-                        <input 
-                        class="focus:outline-blue-500" 
-                        placeholder="smithed.dev API token" />
+                        {#if !authedSmithed}
+                        <input class="focus:outline-blue-500" placeholder="smithed.dev email" bind:value={smithedEmail} />
+                        <input type="password" class="focus:outline-blue-500" placeholder="smithed.dev password" bind:value={smithedPassword} />
+                        <button class="items-center flex w-fit bg-zinc-900 rounded-md h-8 p-2 px-2 cursor-pointer text-zinc-400 hover:text-zinc-300 mb-1" on:click={authSmithed}>Log In</button>
+                        {:else}
+                        <p><b>User:</b> {authedSmithed.displayName}</p>
+                        <select>
+                            <option>-- Select a pack --</option>
+                            {#each smithedPacks as pack}
+                            <option>{pack.display.name}</option>
+                            {/each}
+                        </select>
+                        {/if}
                     </div>
                 </div>
                 <p class="text-sm text-zinc-500 mt-2">Nothing entered here is sent to us. All code is client-side, which means that we can't view anything you enter here, including API tokens.</p>
@@ -164,6 +266,7 @@ let releaseChannel: "release" | "beta" | "alpha" = "release"
                 <h2 class="text-sm mt-3">Resource Pack <Dots dots={["mod", "smi", "dph"]} /></h2>
                 <input type="file" class="hidden" name="rp" id="rp" bind:this={rpInput} on:change={uploadRP}/>
                 <label for="rp" bind:this={rpLabel} class="items-center flex w-fit bg-zinc-900 rounded-md h-8 p-2 px-2 cursor-pointer text-zinc-400 hover:text-zinc-300 mb-1">Add Resource Pack file</label>
+
                 <p class="text-sm text-zinc-500 mt-2">Nothing entered here is sent to us. All code is client-side, which means that we can't view anything you enter here, including API tokens.</p>
                 {:else if page == 3}
                 <p class="font-bold text-md mb-2">Preview your new version:</p>
