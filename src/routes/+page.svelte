@@ -3,6 +3,9 @@ import Dots from "$lib/Dots.svelte";
 import autoAnimate from "@formkit/auto-animate";
 import { MultiSelect } from "svelte-multiselect";
 
+let authed = 2;
+let page = 2;
+
 // Smithed stuff
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, getIdToken, type User } from "firebase/auth";
@@ -82,6 +85,7 @@ async function authSmithed(){
             }
 
             authedSmithed = smithedUserParsed;
+            authed++;
         } else{
             alert("Error loading your Smithed user data.")
         }
@@ -120,6 +124,7 @@ async function authDph(){
             let dphProjsParsed = await dphProjs.json()
             dphPacks = dphProjsParsed.result
         }
+        authed++;
     }
 }
 
@@ -155,18 +160,9 @@ async function authModrinth(){
             let modProjsParsed = await modProjs.json() as {title: string, id: string}[]
             modPacks = modProjsParsed
         }
+        authed++;
     }
 }
-
-let rpLabel: HTMLLabelElement;
-let rpInput: HTMLInputElement;
-function uploadRP(){
-    rpLabel.innerHTML = `<span class="text-slate-200">${rpInput.files?.item(0).name} (click to change)</span>`
-}
-
-let page = 1;
-
-let fileInput: HTMLInputElement;
 
 const minecraftVersions = [
   "1.13",
@@ -181,6 +177,7 @@ const minecraftVersions = [
   "1.20.2"
 ];
 
+// MODRINTH DEPENDENCIES
 let modDeps: {
     title: string,
     id: string,
@@ -203,13 +200,80 @@ async function createModDep(){
             modDeps.push(projReqParsed)
             console.log(modDeps)
             addModDep = false;
+        }else{
+            alert("Could not get the Modrinth project. Does it exist?")
         }
     }
 }  
 
+// SMITHED DEPENDENCIES
 let addSmiDep = false;
+let smiDepValue: string = "";
+let smiDepVerValue: string = "";
+let smiDeps: {
+    id: string,
+    version: string,
+    name: string,
+    icon: string
+}[] = []
 
+async function createSmiDep(){
+    if(smiDepValue == "" || smiDepVerValue == "") return alert("Make sure to set a value and version ID!")
+    let projReq = await fetch("https://api.smithed.dev/v2/packs/" + smiDepValue + "/versions")
+    let projDataReq = await fetch("https://api.smithed.dev/v2/packs/" + smiDepValue)
+    if(projReq.ok && projDataReq.ok){
+        let projReqParsed = await projReq.json() as {name: string}[]
+        let projDataParsed = await projDataReq.json() as {id: string, display:{name: string, icon: string}}
+
+        const versionExists = projReqParsed.some((versionObj) => versionObj.name === smiDepVerValue);
+        if(!versionExists) return alert("Are you sure the version exists?")
+
+        smiDeps.push({
+            id: projDataParsed.id,
+            version: smiDepVerValue,
+            name: projDataParsed.display.name,
+            icon: projDataParsed.display.icon
+        })
+        addSmiDep = false;
+    }else{
+        return alert("Could not get the Smithed project. Does it exist?")
+    }
+}  
+
+let rpLabel: HTMLLabelElement;
+function uploadRP(){
+    rpLabel.innerHTML = `<span class="text-slate-200">${rpInput.files?.item(0).name} (click to change)</span>`
+}
+
+// --------------- VERSION DETAILS ---------------
+let fileInput: HTMLInputElement;
+
+let title: string = "";
+let versionCode: string = "";
+let changelog: string = "";
+let mcVersions: string[] = [];
+// dependencies are separate
 let releaseChannel: "release" | "beta" | "alpha" = "release"
+let rpInput: HTMLInputElement;
+
+// ------------ THE RELEVANT FUNCTION ------------
+let selectedDphPack: string;
+
+const toBase64 = (file: Blob) =>
+    new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.addEventListener("load", () => resolve(reader.result as string));
+        reader.addEventListener("error", () => reject);
+    });
+
+async function postFunction(){
+    if(authedDph){
+        const dpFileInput = document.getElementById("upload") as HTMLInputElement
+        const dpFile = dpFileInput.files?.item(0)
+        if(!dpFile) return alert("Something went wrong. Please re-upload your datapack file, I can't seem to find it.")
+    }
+}
 </script>
 
 <div class="flex justify-around items-center min-h-screen h-full py-3">
@@ -220,9 +284,9 @@ let releaseChannel: "release" | "beta" | "alpha" = "release"
                 <h1><b class="text-5xl md:text-7xl">Mailman</b> <span class="text-base hidden md:inline">by Datapack Hub</span></h1>
             </div>
             <p>Upload your datapack versions to 
-                <a class="text-orange-600 hover:underline" href="https://datapackhub.net">Datapack Hub</a>, 
-                <a class="text-green-600 hover:underline" href="https://modrinth.com">Modrinth</a>, and 
-                <a class="text-blue-500 hover:underline" href="https://smithed.dev">Smithed</a> at the same time!</p>
+                <a class="text-orange-600 hover:underline" href="https://datapackhub.net" target="_blank">Datapack Hub</a>, 
+                <a class="text-green-600 hover:underline" href="https://modrinth.com" target="_blank">Modrinth</a>, and 
+                <a class="text-blue-500 hover:underline" href="https://beta.smithed.dev" target="_blank">Smithed</a> at the same time!</p>
         </div>
         <div>
             <div class="bg-zinc-950 rounded-xl border-zinc-800 border-2 p-3 max-h-[50%] overflow-y-auto styled-scrollbar max-w-screen-lg" use:autoAnimate>
@@ -248,10 +312,10 @@ let releaseChannel: "release" | "beta" | "alpha" = "release"
                         <button class="items-center flex w-fit bg-zinc-900 rounded-md h-8 p-2 px-2 cursor-pointer text-zinc-400 hover:text-zinc-300 mb-1" on:click={authDph}>Authenticate</button>
                         {:else}
                         <p><b>User:</b> {authedDph?.username}</p>
-                        <select class="focus:outline-blue-500">
+                        <select class="focus:outline-blue-500" bind:value={selectedDphPack}>
                             <option>-- Select a pack --</option>
                             {#each dphPacks as pack}
-                            <option>{pack.title}</option>
+                            <option value="{pack.id}">{pack.title}</option>
                             {/each}
                         </select>
                         {/if}
@@ -306,16 +370,16 @@ let releaseChannel: "release" | "beta" | "alpha" = "release"
                 <h1 class="font-bold">Enter version details. </h1>
 
                 <h2 class="text-sm mt-3">Title <Dots dots={["mod","dph"]} /></h2>
-                <input placeholder="The Snails Update" />
+                <input placeholder="The Snails Update" bind:value={title} />
 
                 <h2 class="text-sm mt-3">Version Code <Dots dots={["mod","smi","dph"]} /></h2>
-                <input placeholder="v1.2.3" />
+                <input placeholder="v1.2.3" bind:value={versionCode} />
 
                 <h2 class="text-sm mt-3">Changelog <Dots dots={["mod","dph"]} /></h2>
-                <textarea placeholder="This version adds a snail you can worship, among other bug fixes" />
+                <textarea placeholder="This version adds a snail you can worship, among other bug fixes" bind:value={changelog} />
 
                 <h2 class="text-sm mt-3">Supported Minecraft Versions <Dots dots={["mod","dph","smi"]} /></h2>
-                <MultiSelect options={minecraftVersions} placeholder="1.17, 1.18"/>
+                <MultiSelect options={minecraftVersions} placeholder="1.17, 1.18" bind:value={mcVersions}/>
                 
                 <div class="flex">
                     <div class="w-1/3">
@@ -328,17 +392,16 @@ let releaseChannel: "release" | "beta" | "alpha" = "release"
                                 <img src={dep.icon_url} class="h-8 rounded-md" />
                                 <h1>{dep.title}</h1>
                                 {#if dep.dep_type == "required"}
-                                <h1 class="font-bold text-sm text-green-500"> • Required</h1>
+                                <h1 class="font-light text-sm text-green-500"> • Required</h1>
                                 {:else if dep.dep_type == "optional"}
-                                <h1 class="font-bold text-sm text-yellow-500"> • Optional</h1>
+                                <h1 class="font-light text-sm text-yellow-500"> • Optional</h1>
                                 {:else if dep.dep_type == "incompatible"}
-                                <h1 class="font-bold text-sm text-red-500"> • Incompatible</h1>
+                                <h1 class="font-light text-sm text-red-500"> • Incompatible</h1>
                                 {:else if dep.dep_type == "embedded"}
-                                <h1 class="font-bold text-sm text-pink-500"> • Embedded
+                                <h1 class="font-light text-sm text-pink-500"> • Embedded
                                 </h1>
                                 {/if}
                             </div>
-                            
                             {/each}
                         {/key}
                         {:else}
@@ -367,13 +430,22 @@ let releaseChannel: "release" | "beta" | "alpha" = "release"
                         <h1>{dep}</h1>
                         {/each}
                         {#if addSmiDep == false}
-                        <button class="bg-zinc-900 rounded-md h-8 p-1 px-2 text-zinc-400 hover:text-zinc-300" on:click={() => addSmiDep = true}>Add Dependency</button>
+                        <button class="bg-zinc-900 rounded-md h-8 mb-2 p-1 px-2 text-zinc-400 hover:text-zinc-300" on:click={() => addSmiDep = true}>Add Dependency</button>
+                        {#key smiDeps}
+                            {#each smiDeps as dep}
+                            <div class="flex items-center space-x-2 mb-1">
+                                <img src={dep.icon} class="h-8 rounded-md" />
+                                <h1>{dep.name}</h1>
+                                <h1 class="font-light text-sm">(v{dep.version})</h1>
+                            </div>
+                            {/each}
+                        {/key}
                         {:else}
                         <div class="space-y-1 w-2/3">
-                            <input placeholder="Dependency (Owner:ID)" />
-                            <input placeholder="Version code" />
+                            <input placeholder="Project ID" bind:value={smiDepValue} />
+                            <input placeholder="Version code" bind:value={smiDepVerValue} />
                             <div class="flex space-x-1">
-                                <button class="bg-orange-600 rounded-md p-1 px-2 text-md" on:click={() => page++}>Add</button>
+                                <button class="bg-orange-600 rounded-md p-1 px-2 text-md" on:click={createSmiDep}>Add</button>
                                 <button class="bg-zinc-800 rounded-md p-1 px-2 text-md" on:click={() => addSmiDep = false}>Cancel</button>
                             </div>
                         </div>
@@ -396,29 +468,44 @@ let releaseChannel: "release" | "beta" | "alpha" = "release"
                 {:else if page == 3}
                 <p class="font-bold text-md mb-2">Preview your new version:</p>
                 <div class="p-3 bg-zinc-900 rounded-xl max-w-full">
-                    <p class="text-zinc-400"><b class="text-zinc-200">Title: </b> Realistic Item Drops 2.7</p>
-                    <p class="text-zinc-400"><b class="text-zinc-200">Version Code: </b> v2.7</p>
-                    <p class="text-zinc-400"><b class="text-zinc-200">Resource Pack: </b> file-123.zip (Required)</p>
-                    <p class="text-zinc-400 mb-3"><b class="text-zinc-200">Supports Minecraft Versions: </b> 1.16, 1.17, 1.18, 1.19</p>
+                    <p class="text-zinc-400"><b class="text-zinc-200">Title: </b> {title}</p>
+                    <p class="text-zinc-400"><b class="text-zinc-200">Version Code: </b> {versionCode}</p>
+                    {#if rpInput && rpInput.files?.length > 0}
+                    <p class="text-zinc-400"><b class="text-zinc-200">Resource Pack: </b> {rpInput.files[0].name} (Required)</p>
+                    {/if}
+                    <p class="text-zinc-400 mb-3"><b class="text-zinc-200">Supports Minecraft Versions: </b> {mcVersions.join(", ")}</p>
                     
-                    <p class="text-zinc-400 mb-3"><b class="text-zinc-200">Changelog: </b> Adds many cool things which makes this description long enough to represent what a real changelog would actually look like.</p>
+                    <p class="text-zinc-400 mb-3"><b class="text-zinc-200">Changelog: </b> {changelog}</p>
 
-                    
-                    <p class="text-zinc-400"><b class="text-zinc-200">Modrinth Dependencies: </b> Realistic Item Drops, DynDamLib</p>
-                    <p class="text-zinc-400 mb-3"><b class="text-zinc-200">Smithed Dependencies: </b> TCC, Custom Crafter</p>
+                    {#if modDeps.length > 0}
+                    <p class="text-zinc-400"><b class="text-zinc-200">Modrinth Dependencies: </b> {modDeps.map(obj => obj.title).join(', ')}</p>
+                    {/if}
+                    {#if smiDeps.length > 0}
+                    <p class="text-zinc-400 mb-3"><b class="text-zinc-200">Smithed Dependencies: </b> {smiDeps.map(obj => obj.name).join(', ')}</p>
+                    {/if}
 
-                    <p class="text-zinc-400"><b class="text-zinc-200">Release Channel: </b> Beta</p>
+                    <p class="text-zinc-400"><b class="text-zinc-200">Release Channel: </b> {releaseChannel}</p>
                 </div>
                 <p class="text-sm text-zinc-500 mt-2">Once you're sure that the information above is correct, press Upload Version to upload your datpack to the specified websites. (Some details, such as Release Channel and Dependencies, are only on some websites. For example, Release Channel only applies to Modrinth.)</p>
                 {/if}
             </div>
             {#if page != 0}
-            <div class="mt-1">
-                <button class="bg-zinc-700 rounded-md p-1 px-2 text-lg" on:click={() => {
-                    if(page > 0) page--
-                    if(page == 0) fileInput.files = null;
-                }}>Back</button>
-                <button class="bg-orange-600 rounded-md p-1 px-2 float-right text-lg font-semibold" on:click={() => page++}>{page == 3 ? "Upload Version" : "Next"}</button>
+            <div class="mt-1 flex">
+                <div class="w-1/3">
+                    <button class="bg-zinc-700 rounded-md p-1 px-2 text-lg" on:click={() => {
+                        if(page > 0) page--
+                        if(page == 0) fileInput.files = null;
+                    }}>Back</button>
+                </div>
+                <div class="w-1/3 flex items-center justify-around text-blue-400">
+                    <div class="flex space-x-1">
+                        <a href="https://discord.datapackhub.net">Need help?</a>
+                    </div>
+                </div>
+                <div class="w-1/3">
+                    <button class="transition-all {authed > 1 ? "bg-orange-600" : "bg-orange-600/40 cursor-default"} rounded-md p-1 px-2 float-right text-lg font-semibold" on:click={() => {if(authed > 1) page++}}>{page == 3 ? "Upload Version" : "Next"}</button>
+                </div>
+                
             </div>
             {/if}
         </div>
