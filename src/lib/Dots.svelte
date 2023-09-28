@@ -1,5 +1,7 @@
 <script lang="ts">
-    export let dots: string[];
+    type Platform = "dph" | "mod" | "smi"
+
+    export let dots: Platform[];
 </script>
 
 <span class="select-none inline-flex">
