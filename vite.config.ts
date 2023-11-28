@@ -1,7 +1,8 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import { ViteImageOptimizer } from 'vite-plugin-image-optimizer';
+import Icons from 'unplugin-icons/vite';
+import { enhancedImages } from "@sveltejs/enhanced-img"
 
 export default defineConfig({
-	plugins: [sveltekit(), ViteImageOptimizer()]
+	plugins: [sveltekit(), enhancedImages(), Icons({ compiler: "svelte" })]
 });
