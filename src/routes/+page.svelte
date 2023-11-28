@@ -19,8 +19,8 @@
 	import IconVersions from '~icons/tabler/Versions.svelte';
 
     // ignore this sila
-    import mailmanPNG from "$static/mailman.png"
-    import dphPNG from "$static/dph.png"
+    import mailmanPNG from "./mailman.png"
+    import dphPNG from "./dph.png"
 
 	let authed = 0;
 	let page = 0;
@@ -431,7 +431,7 @@
 	<div class="flex flex-col items-center space-y-10">
 		<div class="flex flex-col items-center space-y-2">
 			<div class="flex items-center">
-				<enhanced:img src="{mailmanPNG}" class="h-20 mr-2" alt="logo" />
+				<enhanced:img src="./mailman.png" class="h-20 w-20 mr-2" alt="logo" />
 				<h1>
 					<b class="text-5xl md:text-7xl">Mailman</b>
 					<span class="text-base hidden md:inline">by Datapack Hub</span>
@@ -475,7 +475,7 @@
 						<!-- DATAPACK HUB -->
 						<div class="bg-zinc-950 w-full rounded-xl border-zinc-800 border-2 p-3 space-y-2">
 							<div class="flex items-center space-x-2">
-								<enhanced:img src="{dphPNG}" class="h-8" alt="logo" />
+								<enhanced:img src="./dph.png" class="h-8 w-8" alt="logo" />
 								<b>Datapack Hub</b>
 							</div>
 							{#if !authedDph}
@@ -499,7 +499,7 @@
 						<!-- MODRINTH -->
 						<div class="bg-zinc-950 w-full rounded-xl border-zinc-800 border-2 p-3 space-y-2">
 							<div class="flex items-center space-x-2">
-								<enhanced:img src="/modrinth.svg" class="h-8" alt="logo" />
+								<img src="/modrinth.svg" class="h-8" alt="logo" />
 								<b>Modrinth</b>
 							</div>
 							{#if !authedModrinth}
@@ -526,7 +526,7 @@
 						<!-- SMITHED -->
 						<div class="bg-zinc-950 w-full rounded-xl border-zinc-800 border-2 p-3 space-y-2">
 							<div class="flex items-center space-x-2">
-								<enhanced:img src="/smithed.svg" class="h-8 rounded-full bg-[#1b48c4]" alt="logo" />
+								<img src="/smithed.svg" class="h-8 rounded-full bg-[#1b48c4]" alt="logo" />
 								<b>Smithed</b>
 							</div>
 							{#if !authedSmithed}
@@ -800,7 +800,7 @@
 					<p class="font-bold text-md mb-2">Uploading...</p>
 					<div class="p-3 bg-zinc-900 rounded-xl max-w-full space-y-3">
 						<div class="flex items-center space-x-2">
-							<enhanced:img src="{dphPNG}" class="h-8" alt="logo" />
+							<enhanced:img src="./dph.png" class="h-8 w-8" alt="logo" />
 							<b class="text-orange-600">Datapack Hub: </b>
 							<span class="italic text-gray-400">{dphStatus}</span>
 						</div>
@@ -810,7 +810,7 @@
                         <span class="italic text-gray-400">Waiting...</span>
                     </div> -->
 						<div class="flex items-center space-x-2">
-							<enhanced:img src="/smithed.svg" class="h-8 rounded-full bg-[#1b48c4]" alt="logo" />
+							<img src="/smithed.svg" class="h-8 rounded-full bg-[#1b48c4]" alt="logo" />
 							<b class="text-blue-600">Smithed: </b>
 							<span class="italic text-gray-400">{smiStatus}</span>
 						</div>
