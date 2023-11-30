@@ -48,6 +48,7 @@
 	import { initializeApp } from 'firebase/app';
 	import { getAuth, signInWithEmailAndPassword, getIdToken, type User } from 'firebase/auth';
 	import Button from '$lib/Button.svelte';
+	import { version } from '$app/environment';
 
 	initializeApp({
 		databaseURL: 'https://mc-smithed-default-rtdb.firebaseio.com',
@@ -220,13 +221,14 @@
 		'1.13',
 		'1.15',
 		'1.16.2',
-		'1.17.x',
+		'1.17',
 		'1.18',
 		'1.18.2',
 		'1.19',
 		'1.19.4',
 		'1.20',
-		'1.20.2'
+		'1.20.2',
+		'1.20.3-pre1'
 	];
 
 	// MODRINTH DEPENDENCIES
@@ -304,9 +306,6 @@
 	let rpLabel: HTMLLabelElement;
 	function uploadRP() {
 		rpfile = rpInput?.files?.item(0);
-		rpLabel.innerHTML = `<span class="text-slate-200">${
-			rpInput?.files?.item(0)?.name
-		} (click to change)</span>`;
 	}
 
 	// --------------- VERSION DETAILS ---------------
@@ -353,7 +352,7 @@
 			formData.append('primary_download', dpfile, dpfile.name);
 
 			if (rpfile) {
-				formData.append('resource_pack_download', rpfile, rpfile.name);
+				formData.append('v_rp', rpfile, rpfile.name);
 			}
 
 			console.log(selectedDphPack);
@@ -451,24 +450,38 @@
 			</p>
 		</div>
 		<div>
+			{#if page > 0}
+			<div class="bg-black rounded-t-xl border-zinc-800 border-t-2 border-l-2 border-r-2 p-3 max-h-[50%] overflow-y-auto styled-scrollbar relative max-w-screen-lg font-bold flex items-center space-x-2">
+				{#if page == 1}
+				<IconLogin2 class="text-xl"/>
+				<span>Authenticate and choose your projects</span>
+				{:else if page == 2}
+				<IconFileDescription class="text-xl"/>
+				<span>Enter version details</span>
+				{:else if page == 3}
+				<IconEye class="text-xl" />
+				<span>Preview your new version</span>
+				{/if}
+			</div>
+			{/if}
 			<div
-				class="bg-zinc-950 rounded-xl border-zinc-800 border-2 p-3 max-h-[50%] overflow-y-auto styled-scrollbar relative max-w-screen-lg"
+				class="bg-zinc-950 border-zinc-800 {page == 0 ? "border-2 rounded-xl" : "border-b-2 border-l-2 border-r-2 rounded-b-xl"} p-3 max-h-[50%] overflow-y-auto styled-scrollbar relative max-w-screen-lg"
 				use:autoAnimate
 				bind:this={body}
 			>
-				<input name="upload" id="upload" type="file" class="hidden" on:change={upload} />
+				<input name="upload" id="upload" type="file" class="hidden" accept=".zip" on:change={upload} />
 				{#if page == 0}
 					<label for="upload" class="cursor-pointer flex">
-						<div class="flex space-x-1 p-5 px-10 hover:px-12 transition-all">
-							<IconUpload />
-							<p class=""><b>Click</b> to upload a datapack.</p>
+						<div class="p-5 px-10 hover:px-12 transition-all flex flex-col items-center">
+							<div class="flex space-x-1">
+								<IconUpload />
+								<p class=""><b>Click</b> to upload a datapack.</p>
+							</div>
+							<p class="text-sm text-zinc-500">You can also drop a zip file anywhere on this page.
 						</div>
+						
 					</label>
 				{:else if page == 1}
-					<p class="font-light text-sm mb-2">
-						<b class="font-bold text-base">Authenticate and choose your projects. </b>If you leave
-						one blank, the version won't be posted to that site.
-					</p>
 					<div
 						class="flex flex-col md:flex-row justify-around space-y-2 md:space-y-0 md:space-x-2 w-full"
 					>
@@ -558,21 +571,19 @@
 						view anything you enter here, including API tokens.
 					</p>
 				{:else if page == 2}
-					<h1 class="font-bold">Enter version details.</h1>
-
-					<h2 class="text-sm mt-3 mb-1 flex space-x-1 items-center">
+					<h2 class="text-sm -1 flex space-x-1 items-center">
 						<IconHeading /><span>Title</span>
 						<Dots dots={['mod', 'dph']} />
 					</h2>
 					<input placeholder="The Snails Update" bind:value={title} />
 
-					<h2 class="text-sm mt-3 mb-1 flex space-x-1 items-center">
+					<h2 class="text-sm mt-5 mb-1 flex space-x-1 items-center">
 						<IconListNumbers /><span>Version Code</span>
 						<Dots dots={['mod', 'smi', 'dph']} />
 					</h2>
 					<input placeholder="v1.2.3" bind:value={versionCode} />
 
-					<h2 class="text-sm mt-3 mb-1 flex space-x-1 items-center">
+					<h2 class="text-sm mt-5 mb-1 flex space-x-1 items-center">
 						<IconFileDescription /><span>Changelog</span>
 						<Dots dots={['mod', 'dph']} />
 					</h2>
@@ -580,8 +591,7 @@
 						placeholder="This version adds a snail you can worship, among other bug fixes"
 						bind:value={changelog}
 					/>
-
-					<h2 class="text-sm mt-3 mb-1 flex space-x-1 items-center">
+					<h2 class="text-sm mb-1 mt-3 flex space-x-1 items-center">
 						<IconVersions /><span
 							>Supported Minecraft Versions <Dots dots={['mod', 'dph', 'smi']} /></span
 						>
@@ -591,16 +601,17 @@
 						placeholder="1.17, 1.18"
 						bind:value={mcVersions}
 					/>
+					
 
 					<div class="flex">
 						<div class="w-1/3">
-							<h2 class="text-sm mt-3 mb-1 flex space-x-1 items-center">
+							<h2 class="text-sm mt-5 mb-1 flex space-x-1 items-center">
 								<IconFilter /><span>Modrinth Dependencies</span>
 								<Dots dots={['mod']} />
 							</h2>
 							{#if addModDep == false}
 								<button
-									class="bg-zinc-900 rounded-md h-8 mb-2 p-1 px-2 text-zinc-400 hover:text-zinc-300 flex items-center space-x-1"
+									class="bg-zinc-900 rounded-md h-8 p-1 px-2 text-zinc-400 hover:text-zinc-300 flex items-center space-x-1"
 									on:click={() => (addModDep = true)}
 									><IconPlus /><span>Add Dependency</span></button
 								>
@@ -661,7 +672,7 @@
 							{/if}
 						</div>
 						<div class="w-1/3">
-							<h2 class="text-sm mt-3 mb-1 flex space-x-1 items-center">
+							<h2 class="text-sm mt-5 mb-1 flex space-x-1 items-center">
 								<IconFilter /><span>Smithed Dependencies</span>
 								<Dots dots={['smi']} />
 							</h2>
@@ -670,7 +681,7 @@
 							{/each}
 							{#if addSmiDep == false}
 								<button
-									class="bg-zinc-900 rounded-md h-8 mb-2 p-1 px-2 text-zinc-400 hover:text-zinc-300 flex items-center space-x-1"
+									class="bg-zinc-900 rounded-md h-8 p-1 px-2 text-zinc-400 hover:text-zinc-300 flex items-center space-x-1"
 									on:click={() => (addSmiDep = true)}
 									><IconPlus /><span>Add Dependency</span></button
 								>
@@ -703,7 +714,7 @@
 						</div>
 					</div>
 
-					<h2 class="text-sm mt-3 mb-1 flex space-x-1 items-center">
+					<h2 class="text-sm mt-5 mb-1 flex space-x-1 items-center">
 						<IconDeviceFloppy /><span>Release Channel</span>
 						<Dots dots={['mod']} />
 					</h2>
@@ -713,7 +724,7 @@
 						<option value="alpha">Alpha</option>
 					</select>
 
-					<h2 class="text-sm mt-3 mb-1 flex space-x-1 items-center">
+					<h2 class="text-sm mt-5 mb-1 flex space-x-1 items-center">
 						<IconPaperclip /><span>Resource Pack</span>
 						<Dots dots={['mod', 'smi', 'dph']} />
 					</h2>
@@ -729,8 +740,8 @@
 					<label
 						for="rp"
 						bind:this={rpLabel}
-						class="items-center flex w-fit bg-zinc-900 rounded-md h-8 p-2 px-2 cursor-pointer text-zinc-400 hover:text-zinc-300 mb-1 space-x-1"
-						><IconUpload /><span>Add Resource Pack file</span></label
+						class="items-center flex w-fit bg-zinc-900 text-zinc-400 rounded-md h-8 p-2 px-2 cursor-pointer  hover:text-zinc-300 mb-1 space-x-1"
+						><IconUpload /><span>{#if !rpfile}Add Resource Pack file{:else}{rpfile.name} (click to change){/if}</span></label
 					>
 
 					<p class="text-sm text-zinc-500 mt-2 flex space-x-1 items-center">
@@ -740,9 +751,6 @@
 						>
 					</p>
 				{:else if page == 3}
-					<p class="font-bold text-md mb-2 flex items-center space-x-1">
-						<IconEye /><span>Preview your new version:</span>
-					</p>
 					<div class="p-3 bg-zinc-900 rounded-xl max-w-full">
 						<p class="text-zinc-400 flex items-center space-x-1">
 							<IconHeading class="text-zinc-200" /><b class="text-zinc-200">Title: </b>
@@ -818,10 +826,10 @@
 				{/if}
 			</div>
 			{#if page != 0 && page != 4}
-				<div class="mt-1 flex">
+				<div class="mt-3 flex">
 					<div class="w-1/3">
 						<button
-							class="bg-zinc-700 rounded-md p-1 px-2 text-lg"
+							class="bg-zinc-700 rounded-md p-2 px-3 text-lg"
 							on:click={() => {
 								if (page > 0) page--;
 								if (page == 0) fileInput.files = null;
@@ -829,7 +837,7 @@
 						>
 					</div>
 					<div class="w-1/3 flex items-center justify-around text-blue-400">
-						<div class="flex space-x-1">
+						<div class="flex space-x-1 items-center">
 							<IconHelp />
 							<a href="https://discord.datapackhub.net">Help</a>
 						</div>
@@ -840,7 +848,7 @@
 								? 'bg-orange-600'
 								: 'bg-orange-600/40 cursor-default'} {page == 3
 								? 'bg-green-700'
-								: ''} rounded-md p-1 px-2 float-right text-lg font-semibold flex items-center space-x-1"
+								: ''} rounded-md p-2 px-3 float-right text-lg font-semibold flex items-center space-x-1"
 							on:click={() => {
 								if (page == 3) postFunction();
 								if (authed > 0) page++;
@@ -854,6 +862,11 @@
 		</div>
 	</div>
 </div>
+
+<footer class="fixed bottom-3 left-3 pr-7 text-zinc-500 flex w-full justify-between">
+	<span>© Datapack Hub, 2023</span>
+	<a href="https://github.com/Datapack-Hub/mailman" target="_blank" class="hover:underline">This is open source!</a>
+</footer>
 
 <style>
 	:root {
