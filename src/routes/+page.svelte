@@ -23,16 +23,18 @@
     import dphPNG from "./dph.png"
 
 	let authed = 0;
-	let page = 0;
+	let page = 2;
 	let body: HTMLDivElement;
 	let dpfile: File | null | undefined;
 	let rpfile: File | null | undefined;
 
 	let dphSelect: HTMLSelectElement;
 	let smiSelect: HTMLSelectElement;
+	let modSelect: HTMLSelectElement;
 
 	let selectedDphPack: number;
 	let selectedSmiPack: string;
+	let selectedModPack: string;
 
 	// Project Selection
 	function selectDph() {
@@ -42,6 +44,11 @@
 	// Project Selection
 	function selectSmi() {
 		selectedSmiPack = smithedPacks[smiSelect.selectedIndex - 1].id;
+	}
+
+	// Project Selection
+	function selectMod() {
+		selectedModPack = modPacks[modSelect.selectedIndex - 1].id;
 	}
 
 	// Smithed stuff
@@ -217,20 +224,6 @@
 		}
 	}
 
-	const minecraftVersions = [
-		'1.13',
-		'1.15',
-		'1.16.2',
-		'1.17',
-		'1.18',
-		'1.18.2',
-		'1.19',
-		'1.19.4',
-		'1.20',
-		'1.20.2',
-		'1.20.3-pre1'
-	];
-
 	// MODRINTH DEPENDENCIES
 	let modDeps: {
 		title: string;
@@ -331,7 +324,8 @@
 
 	// Status
 	let dphStatus = 'Waiting...';
-	let smiStatus = 'Waiting';
+	let modStatus = 'Waiting...';
+	let smiStatus = 'Waiting...';
 
 	async function postFunction() {
 		if (!dpfile)
@@ -346,7 +340,7 @@
 			const formData = new FormData();
 			formData.append('name', title);
 			formData.append('description', changelog);
-			formData.append('minecraft_versions', JSON.stringify(mcVersions));
+			formData.append('minecraft_versions', JSON.stringify(generate_datapackhub_versions(mcVersions)));
 			formData.append('version_code', versionCode);
 			formData.append('filename', dpfile.name);
 			formData.append('primary_download', dpfile, dpfile.name);
@@ -371,6 +365,41 @@
 			} else dphStatus = 'Failed.';
 		}
 
+		if (authedDph) {
+			modStatus = 'Uploading...';
+			const formData = new FormData();
+			formData.append('data', Object({
+				name: title,
+				version_number: versionCode,
+				changelog: changelog,
+				game_versions: mcVersions,
+				loaders: "datapack",
+				featured: true,
+				project_id: selectedModPack,
+				file_parts: ["primary_file"]
+			}));
+			formData.append('primary_file', dpfile, dpfile.name);
+
+			if (rpfile) {
+				formData.append('v_rp', rpfile, rpfile.name);
+			}
+
+			console.log(selectedDphPack);
+
+			let dphReq = await fetch(`https://api.modrinth.com/v2/version`, {
+				method: 'POST',
+				headers: {
+					Authorization: 'Basic ' + dphToken
+				},
+				body: formData
+			});
+
+			if (dphReq.ok) {
+				modStatus = 'Done!';
+				dph_data = await dphReq.json();
+			} else modStatus = 'Failed.';
+		}
+
 		if (authedSmithed) {
 			smiStatus = 'Uploading...';
 			console.log(dph_data);
@@ -378,14 +407,14 @@
 				name: string;
 				downloads: { datapack?: string; resourcepack?: string };
 				supports: string[];
-				dependencies?: { id: string; version: string };
+				dependencies?: { id: string; version: string }[];
 			} = {
 				name: versionCode,
 				downloads: {
 					datapack: dph_data.primary_download
 				},
-				supports: mcVersions,
-				dependencies: []
+				supports: generate_smithed_versions(mcVersions),
+				dependencies: smiDeps.map(i => {return {id: i.id, version: i.version}})
 			};
 
 			let smiReq = await fetch(
@@ -419,6 +448,30 @@
 		const dpFileInput = document.getElementById('upload') as HTMLInputElement;
 		dpfile = dpFileInput.files?.item(0);
 	}
+
+	const minecraftVersions = [
+		{"format":4,"label":"1.13"},
+		{"format":5,"label":"1.15"},
+		{"format":6,"label":"1.16.2"},
+		{"format":7,"label":"1.17"},
+		{"format":8,"label":"1.18"},
+		{"format":9,"label":"1.18.2"},
+		{"format":10,"label":"1.19"},
+		{"format":12,"label":"1.19.4"},
+		{"format":15,"label":"1.20"},
+		{"format":18,"label":"1.20.2"},
+		{"format":26,"label":"1.20.3-pre1"},
+	];
+
+	const generate_datapackhub_versions = function(selected: Array<string>) {return selected.map(i => {if(i == "1.17") return "1.17.x"})}
+
+	const generate_smithed_versions = function(selected: Array<string>) {
+		let temp = selected
+		if(temp.includes("1.17")) temp.push("1.17.1")
+		if(temp.includes("1.18")) temp.push("1.18.1")
+		if(temp.includes("1.20")) temp.push("1.20.1")
+		return temp
+	}
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -433,18 +486,18 @@
 				<enhanced:img src="./mailman.png" class="h-20 w-20 mr-2" alt="logo" />
 				<h1>
 					<b class="text-5xl md:text-7xl">Mailman</b>
-					<span class="text-base hidden md:inline">by Datapack Hub</span>
+					<span class="text-base hidden md:inline">by <a href="https://datapackhub.net">Datapack Hub</a></span>
 				</h1>
 			</div>
 			<p>
 				Upload your datapack versions to
-				<a class="text-orange-600 hover:underline" href="https://datapackhub.net" target="_blank"
+				<a class="text-orange-600" href="https://datapackhub.net" target="_blank"
 					>Datapack Hub</a
 				>,
-				<a class="text-green-600 hover:underline" href="https://modrinth.com" target="_blank"
+				<a class="text-green-600" href="https://modrinth.com" target="_blank"
 					>Modrinth</a
 				>, and
-				<a class="text-blue-500 hover:underline" href="https://beta.smithed.dev" target="_blank"
+				<a class="text-blue-500" href="https://smithed.net" target="_blank"
 					>Smithed</a
 				> at the same time!
 			</p>
@@ -527,7 +580,7 @@
 								>
 							{:else}
 								<p><b>User:</b> <span>{authedModrinth.username}</span></p>
-								<select class="focus:outline-blue-500">
+								<select class="focus:outline-blue-500" on:select={selectMod} bind:this={modSelect}>
 									<option>-- Select a pack --</option>
 									{#each modPacks as pack}
 										<option>{pack.title}</option>
@@ -597,7 +650,7 @@
 						>
 					</h2>
 					<MultiSelect
-						options={minecraftVersions}
+						options={minecraftVersions.map(entry => entry.label)}
 						placeholder="1.17, 1.18"
 						bind:value={mcVersions}
 					/>
@@ -690,7 +743,8 @@
 										<div class="flex items-center space-x-2 mb-1">
 											<!-- svelte-ignore a11y-missing-attribute -->
 											<img src={dep.icon} class="h-8 rounded-md" />
-											<h1>{dep.name}</h1>
+											<h1 class="hover:line-through cursor-pointer"
+											on:click={() => (smiDeps = smiDeps.filter((item) => item != dep))}>{dep.name}</h1>
 											<h1 class="font-light text-sm">(v{dep.version})</h1>
 										</div>
 									{/each}
@@ -807,21 +861,27 @@
 				{:else if page == 4}
 					<p class="font-bold text-md mb-2">Uploading...</p>
 					<div class="p-3 bg-zinc-900 rounded-xl max-w-full space-y-3">
+						{#if authedDph}
 						<div class="flex items-center space-x-2">
 							<enhanced:img src="./dph.png" class="h-8 w-8" alt="logo" />
 							<b class="text-orange-600">Datapack Hub: </b>
 							<span class="italic text-gray-400">{dphStatus}</span>
 						</div>
-						<!-- <div class="flex items-center space-x-2">
-                        <img src="/modrinth.svg" class="h-8" alt="logo">
-                        <b class="text-green-400">Modrinth: </b> 
-                        <span class="italic text-gray-400">Waiting...</span>
-                    </div> -->
+						{/if}
+						{#if authedModrinth}
+						<div class="flex items-center space-x-2">
+							<img src="/modrinth.svg" class="h-8" alt="logo">
+							<b class="text-green-400">Modrinth: </b> 
+							<span class="italic text-gray-400">{modStatus}</span>
+						</div>
+						{/if}
+						{#if authedSmithed}
 						<div class="flex items-center space-x-2">
 							<img src="/smithed.svg" class="h-8 rounded-full bg-[#1b48c4]" alt="logo" />
 							<b class="text-blue-600">Smithed: </b>
 							<span class="italic text-gray-400">{smiStatus}</span>
 						</div>
+						{/if}
 					</div>
 				{/if}
 			</div>
@@ -845,7 +905,7 @@
 					<div class="w-1/3">
 						<button
 							class="transition-all {authed > 0
-								? 'bg-orange-600'
+								? 'bg-orange-600 hover:px-4 hover:bg-orange-500'
 								: 'bg-orange-600/40 cursor-default'} {page == 3
 								? 'bg-green-700'
 								: ''} rounded-md p-2 px-3 float-right text-lg font-semibold flex items-center space-x-1"
@@ -865,7 +925,7 @@
 
 <footer class="fixed bottom-3 left-3 pr-7 text-zinc-500 flex w-full justify-between">
 	<span>© Datapack Hub, 2023</span>
-	<a href="https://github.com/Datapack-Hub/mailman" target="_blank" class="hover:underline">This is open source!</a>
+	<a href="https://github.com/Datapack-Hub/mailman" target="_blank">This is open source!</a>
 </footer>
 
 <style>
