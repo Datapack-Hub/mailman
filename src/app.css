@@ -29,3 +29,7 @@ select {
 a {
 	@apply hover:underline
 }
+
+button.fancy {
+	@apply items-center flex space-x-1 w-fit bg-zinc-900 rounded-md h-8 p-2 cursor-pointer text-zinc-400 hover:text-zinc-300
+}

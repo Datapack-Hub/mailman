@@ -18,12 +18,8 @@
 	import IconUpload from '~icons/tabler/Upload.svelte';
 	import IconVersions from '~icons/tabler/Versions.svelte';
 
-    // ignore this sila
-    import mailmanPNG from "./mailman.png"
-    import dphPNG from "./dph.png"
-
 	let authed = 0;
-	let page = 2;
+	let page = 0;
 	let body: HTMLDivElement;
 	let dpfile: File | null | undefined;
 	let rpfile: File | null | undefined;
@@ -36,18 +32,28 @@
 	let selectedSmiPack: string;
 	let selectedModPack: string;
 
+	let selectedDphIndex: any;
+	let selectedSmiIndex: any;
+	let selectedModIndex: any;
+
 	// Project Selection
 	function selectDph() {
+		// selectedDphIndex = dphSelect.selectedOptions[0].value
+		console.log("Selected Datapack Hub Pack: " + JSON.stringify(dphPacks[dphSelect.selectedIndex - 1]))
 		selectedDphPack = dphPacks[dphSelect.selectedIndex - 1].ID;
 	}
 
 	// Project Selection
 	function selectSmi() {
+		// selectedSmiIndex = smiSelect.selectedOptions[0].value
+		console.log("Selected Smithed Pack: " + JSON.stringify(smithedPacks[smiSelect.selectedIndex - 1]))
 		selectedSmiPack = smithedPacks[smiSelect.selectedIndex - 1].id;
 	}
 
 	// Project Selection
 	function selectMod() {
+		// selectedModIndex = modSelect.selectedOptions[0].value
+		console.log("Selected Modrinth Pack: " + JSON.stringify(modPacks[modSelect.selectedIndex - 1]))
 		selectedModPack = modPacks[modSelect.selectedIndex - 1].id;
 	}
 
@@ -134,7 +140,6 @@
 						);
 						if (smithedPack.ok) {
 							let smithedPackParsed = await smithedPack.json();
-							console.log(smithedPackParsed);
 							tempPacks.push(smithedPackParsed);
 						}
 					}
@@ -239,22 +244,20 @@
 
 	async function createModDep() {
 		if (modDepValue == '') return alert('Make sure to set a value!');
-		if (modDepSource == 'project') {
-			let projReq = await fetch('https://api.modrinth.com/v2/project/' + modDepValue);
-			if (projReq.ok) {
-				let projReqParsed = (await projReq.json()) as {
-					title: string;
-					id: string;
-					icon_url: string;
-					dep_type: 'required' | 'optional' | 'incompatible' | 'embedded';
-				};
-				projReqParsed.dep_type = modDepType;
-				modDeps.push(projReqParsed);
-				console.log(modDeps);
-				addModDep = false;
-			} else {
-				alert('Could not get the Modrinth project. Does it exist?');
-			}
+		let projReq = await fetch('https://api.modrinth.com/v2/project/' + modDepValue);
+		if (projReq.ok) {
+			let projReqParsed = (await projReq.json()) as {
+				title: string;
+				id: string;
+				icon_url: string;
+				dep_type: 'required' | 'optional' | 'incompatible' | 'embedded';
+			};
+			projReqParsed.dep_type = modDepType;
+			modDeps.push(projReqParsed);
+			console.log(modDeps);
+			addModDep = false;
+		} else {
+			alert('Could not get the Modrinth project. Does it exist?');
 		}
 	}
 
@@ -333,9 +336,13 @@
 				'Something went wrong. Please upload your project again and try again. If the issue persists, please contact us on our Discord.'
 			);
 
-		let dph_data;
+		let file_link_data: {
+			datapack?: string,
+			resourcepack?: string
+		} = {};
 
-		if (authedDph) {
+		if (authedDph && selectedDphPack) {
+			console.log("Posting DPH version: " + selectedDphPack)
 			dphStatus = 'Uploading...';
 			const formData = new FormData();
 			formData.append('name', title);
@@ -349,8 +356,6 @@
 				formData.append('v_rp', rpfile, rpfile.name);
 			}
 
-			console.log(selectedDphPack);
-
 			let dphReq = await fetch(`https://api.datapackhub.net/versions/new/${selectedDphPack}`, {
 				method: 'POST',
 				headers: {
@@ -361,48 +366,75 @@
 
 			if (dphReq.ok) {
 				dphStatus = 'Done!';
-				dph_data = await dphReq.json();
+				let dph_data = await dphReq.json();
+				file_link_data.datapack = dph_data.primary_download
+				if (rpfile) file_link_data.resourcepack = dph_data.resource_pack_download
 			} else dphStatus = 'Failed.';
 		}
 
-		if (authedDph) {
+		if (authedModrinth && selectedModPack) {
+			console.log("Posting MOD version: " + selectedModPack)
 			modStatus = 'Uploading...';
 			const formData = new FormData();
-			formData.append('data', Object({
+
+			var modrinth_dependencies = []
+
+			for (const i of modDeps) {
+				modrinth_dependencies.push({
+					project_id: i.id,
+					dependency_type: i.dep_type
+				})
+			}
+
+			let data = {
 				name: title,
 				version_number: versionCode,
 				changelog: changelog,
 				game_versions: mcVersions,
-				loaders: "datapack",
+				loaders: ["datapack"],
 				featured: true,
 				project_id: selectedModPack,
-				file_parts: ["primary_file"]
-			}));
-			formData.append('primary_file', dpfile, dpfile.name);
-
-			if (rpfile) {
-				formData.append('v_rp', rpfile, rpfile.name);
+				file_types: {},
+				file_parts: [dpfile.name + '-primary'],
+				version_type: releaseChannel,
+				dependencies: modrinth_dependencies
 			}
 
-			console.log(selectedDphPack);
+			if (rpfile) {
+				data.file_types = {"resource_pack":"required-resource-pack"}
+				data.file_parts.push("resource_pack")
+			}
 
-			let dphReq = await fetch(`https://api.modrinth.com/v2/version`, {
+			formData.append("data", JSON.stringify(data))
+			formData.append(dpfile.name + '-primary', dpfile, dpfile.name);
+			if(rpfile) formData.append("resource-pack",rpfile,rpfile?.name)
+
+			let modReq = await fetch(`https://api.modrinth.com/v2/version`, {
 				method: 'POST',
 				headers: {
-					Authorization: 'Basic ' + dphToken
+					Authorization: modToken
 				},
 				body: formData
 			});
 
-			if (dphReq.ok) {
+			if (modReq.ok) {
 				modStatus = 'Done!';
-				dph_data = await dphReq.json();
-			} else modStatus = 'Failed.';
+				if(file_link_data.datapack) {
+					let mod_out = await modReq.json()
+					file_link_data.datapack = mod_out.files[0].url
+					if (rpfile) file_link_data.resourcepack = mod_out.files[1].url
+				}
+				
+				
+			} else {
+				let mod_out = await modReq.json()
+				modStatus = `(${modReq.status}) Failed: ` + mod_out.description
+			};
 		}
 
-		if (authedSmithed) {
+		if (authedSmithed && selectedSmiPack) {
+			console.log("Posting SMI version: " + selectedSmiPack)
 			smiStatus = 'Uploading...';
-			console.log(dph_data);
 			let smiUploadData: {
 				name: string;
 				downloads: { datapack?: string; resourcepack?: string };
@@ -411,11 +443,13 @@
 			} = {
 				name: versionCode,
 				downloads: {
-					datapack: dph_data.primary_download
+					datapack: file_link_data.datapack
 				},
 				supports: generate_smithed_versions(mcVersions),
 				dependencies: smiDeps.map(i => {return {id: i.id, version: i.version}})
 			};
+
+			if (rpfile) smiUploadData.downloads.resourcepack = file_link_data.resourcepack
 
 			let smiReq = await fetch(
 				`https://api.smithed.dev/v2/packs/${selectedSmiPack}/versions?token=${smithedToken}&version=${versionCode}`,
@@ -463,7 +497,7 @@
 		{"format":26,"label":"1.20.3-pre1"},
 	];
 
-	const generate_datapackhub_versions = function(selected: Array<string>) {return selected.map(i => {if(i == "1.17") return "1.17.x"})}
+	const generate_datapackhub_versions = function(selected: Array<string>) {return selected.map(i => {if(i == "1.17") {return "1.17.x"} else return i })}
 
 	const generate_smithed_versions = function(selected: Array<string>) {
 		let temp = selected
@@ -483,7 +517,7 @@
 	<div class="flex flex-col items-center space-y-10">
 		<div class="flex flex-col items-center space-y-2">
 			<div class="flex items-center">
-				<enhanced:img src="./mailman.png" class="h-20 w-20 mr-2" alt="logo" />
+				<img src="./mailman.png" class="h-20 w-20 mr-2" alt="logo" />
 				<h1>
 					<b class="text-5xl md:text-7xl">Mailman</b>
 					<span class="text-base hidden md:inline">by <a href="https://datapackhub.net">Datapack Hub</a></span>
@@ -514,6 +548,9 @@
 				{:else if page == 3}
 				<IconEye class="text-xl" />
 				<span>Preview your new version</span>
+				{:else if page == 4}
+				<IconUpload class="text-xl" />
+				<span>Uploading version...</span>
 				{/if}
 			</div>
 			{/if}
@@ -541,19 +578,19 @@
 						<!-- DATAPACK HUB -->
 						<div class="bg-zinc-950 w-full rounded-xl border-zinc-800 border-2 p-3 space-y-2">
 							<div class="flex items-center space-x-2">
-								<enhanced:img src="./dph.png" class="h-8 w-8" alt="logo" />
+								<img src="./dph.png" class="h-8 w-8" alt="logo" />
 								<b>Datapack Hub</b>
 							</div>
 							{#if !authedDph}
-								<input
-									class="focus:outline-orange-600"
-									placeholder="datapackhub.net API token"
-									bind:value={dphToken}
-								/>
-								<Button click={authDph}><IconLogin2 /><span>Authenticate</span></Button>
+							<input
+								class="focus:outline-orange-600"
+								placeholder="datapackhub.net API token"
+								bind:value={dphToken}
+							/>
+							<Button click={authDph}><IconLogin2 /><span>Authenticate</span></Button>
 							{:else}
 								<p><b>User:</b> <span>{authedDph?.username}</span></p>
-								<select class="focus:outline-blue-500" bind:this={dphSelect} on:change={selectDph}>
+								<select class="focus:outline-orange-600" bind:this={dphSelect} on:change={selectDph} bind:value={selectedDphIndex}>
 									<option>-- Select a pack --</option>
 									{#each dphPacks as pack}
 										<option value={pack.ID}>{pack.title}</option>
@@ -580,7 +617,7 @@
 								>
 							{:else}
 								<p><b>User:</b> <span>{authedModrinth.username}</span></p>
-								<select class="focus:outline-blue-500" on:select={selectMod} bind:this={modSelect}>
+								<select class="focus:outline-green-500" on:change={selectMod} bind:this={modSelect} bind:value={selectedModIndex}>
 									<option>-- Select a pack --</option>
 									{#each modPacks as pack}
 										<option>{pack.title}</option>
@@ -610,7 +647,7 @@
 								<Button click={authSmithed}><IconLogin2 /><span>Log In</span></Button>
 							{:else}
 								<p><b>User:</b> <span>{authedSmithed.displayName}</span></p>
-								<select class="focus:outline-blue-500" on:change={selectSmi} bind:this={smiSelect}>
+								<select class="focus:outline-blue-500" on:change={selectSmi} bind:this={smiSelect} bind:value={selectedSmiIndex}>
 									<option>-- Select a pack --</option>
 									{#each smithedPacks as pack}
 										<option>{pack.display.name}</option>
@@ -697,12 +734,8 @@
 								{/key}
 							{:else}
 								<div class="space-y-1 w-2/3">
-									<select bind:value={modDepSource}>
-										<option value="project">Project</option>
-										<option value="version">Version</option>
-									</select>
 									<input
-										placeholder={modDepSource == 'project' ? 'Project ID or slug' : 'Version ID'}
+										placeholder="Project ID or slug"
 										bind:value={modDepValue}
 									/>
 									<select bind:value={modDepType}>
@@ -852,18 +885,11 @@
 							</b> <span>{releaseChannel}</span>
 						</p>
 					</div>
-					<p class="text-sm text-zinc-500 mt-2">
-						Once you're sure that the information above is correct, press Upload Version to upload
-						your datpack to the specified websites. (Some details, such as Release Channel and
-						Dependencies, are only on some websites. For example, Release Channel only applies to
-						Modrinth.)
-					</p>
 				{:else if page == 4}
-					<p class="font-bold text-md mb-2">Uploading...</p>
 					<div class="p-3 bg-zinc-900 rounded-xl max-w-full space-y-3">
 						{#if authedDph}
 						<div class="flex items-center space-x-2">
-							<enhanced:img src="./dph.png" class="h-8 w-8" alt="logo" />
+							<img src="./dph.png" class="h-8 w-8" alt="logo" />
 							<b class="text-orange-600">Datapack Hub: </b>
 							<span class="italic text-gray-400">{dphStatus}</span>
 						</div>
@@ -886,7 +912,7 @@
 				{/if}
 			</div>
 			{#if page != 0 && page != 4}
-				<div class="mt-3 flex">
+				<div class="mt-3 flex lg:min-w-[50vw] min-w-[90vw]">
 					<div class="w-1/3">
 						<button
 							class="bg-zinc-700 rounded-md p-2 px-3 text-lg"
