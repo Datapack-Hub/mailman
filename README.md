@@ -17,3 +17,6 @@ The website is designed to be very easy to use if you are familiar with uploadin
 3. Pick the project that you want to add the version to.
 4. Enter the relevant details (version title, code, changelog, minecraft versions, dependencies)
 5. Hit Upload, and you're done!
+
+## The code part
+Pretty much *all* the code (HTML, JS) is in /src/routes/+page.svelte. 

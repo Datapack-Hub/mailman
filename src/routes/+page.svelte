@@ -1,3 +1,5 @@
+<!-- yes you are in the right file -->
+
 <script lang="ts">
 	import Dots from '$lib/Dots.svelte';
 	import autoAnimate from '@formkit/auto-animate';
