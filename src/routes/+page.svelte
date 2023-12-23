@@ -20,6 +20,9 @@
 	import IconUpload from '~icons/tabler/Upload.svelte';
 	import IconVersions from '~icons/tabler/Versions.svelte';
 
+	let borderStyle = "border-zinc-800"
+	let is_drag =false
+
 	let authed = 0;
 	let page = 0;
 	let body: HTMLDivElement;
@@ -240,7 +243,6 @@
 	}[] = [];
 
 	let addModDep = false;
-	let modDepSource: 'project' | 'version' = 'project';
 	let modDepType: 'required' | 'optional' | 'incompatible' | 'embedded' = 'required';
 	let modDepValue: string = '';
 
@@ -318,14 +320,6 @@
 	let rpInput: HTMLInputElement;
 
 	// ------------ THE RELEVANT FUNCTION ------------
-
-	const toBase64 = (file: Blob) =>
-		new Promise<string>((resolve, reject) => {
-			const reader = new FileReader();
-			reader.readAsDataURL(file);
-			reader.addEventListener('load', () => resolve(reader.result as string));
-			reader.addEventListener('error', () => reject);
-		});
 
 	// Status
 	let dphStatus = 'Waiting...';
@@ -435,41 +429,45 @@
 		}
 
 		if (authedSmithed && selectedSmiPack) {
-			console.log("Posting SMI version: " + selectedSmiPack)
-			smiStatus = 'Uploading...';
-			let smiUploadData: {
-				name: string;
-				downloads: { datapack?: string; resourcepack?: string };
-				supports: string[];
-				dependencies?: { id: string; version: string }[];
-			} = {
-				name: versionCode,
-				downloads: {
-					datapack: file_link_data.datapack
-				},
-				supports: generate_smithed_versions(mcVersions),
-				dependencies: smiDeps.map(i => {return {id: i.id, version: i.version}})
-			};
-
-			if (rpfile) smiUploadData.downloads.resourcepack = file_link_data.resourcepack
-
-			let smiReq = await fetch(
-				`https://api.smithed.dev/v2/packs/${selectedSmiPack}/versions?token=${smithedToken}&version=${versionCode}`,
-				{
-					method: 'POST',
-					headers: {
-						'content-type': 'application/json'
+			if (file_link_data.datapack) {
+				console.log("Posting SMI version: " + selectedSmiPack)
+				smiStatus = 'Uploading...';
+				let smiUploadData: {
+					name: string;
+					downloads: { datapack?: string; resourcepack?: string };
+					supports: string[];
+					dependencies?: { id: string; version: string }[];
+				} = {
+					name: versionCode,
+					downloads: {
+						datapack: file_link_data.datapack
 					},
-					body: JSON.stringify({
-						data: smiUploadData
-					})
-				}
-			);
+					supports: generate_smithed_versions(mcVersions),
+					dependencies: smiDeps.map(i => {return {id: i.id, version: i.version}})
+				};
 
-			if (smiReq.ok) {
-				smiStatus = 'Done!';
+				if (rpfile) smiUploadData.downloads.resourcepack = file_link_data.resourcepack
+
+				let smiReq = await fetch(
+					`https://api.smithed.dev/v2/packs/${selectedSmiPack}/versions?token=${smithedToken}&version=${versionCode}`,
+					{
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json'
+						},
+						body: JSON.stringify({
+							data: smiUploadData
+						})
+					}
+				);
+
+				if (smiReq.ok) {
+					smiStatus = 'Done!';
+				} else {
+					smiStatus = 'Failed.';
+				}
 			} else {
-				smiStatus = 'Failed.';
+				smiStatus = 'Failed: Uploading to smithed cannot work if uploading to the other sites did not work.';
 			}
 		}
 	}
@@ -477,6 +475,7 @@
 	function drop(e: DragEvent) {
 		page = 1;
 		dpfile = e.dataTransfer?.items[0].getAsFile();
+		borderStyle = "border-zinc-800"
 	}
 
 	function upload() {
@@ -496,7 +495,7 @@
 		{"format":12,"label":"1.19.4"},
 		{"format":15,"label":"1.20"},
 		{"format":18,"label":"1.20.2"},
-		{"format":26,"label":"1.20.3-pre1"},
+		{"format":26,"label":"1.20.3"},
 	];
 
 	const generate_datapackhub_versions = function(selected: Array<string>) {return selected.map(i => {if(i == "1.17") {return "1.17.x"} else return i })}
@@ -513,7 +512,10 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
 	class="flex justify-around items-center min-h-screen h-full py-3"
-	on:dragover|preventDefault={() => {}}
+	on:dragover|preventDefault={() => {borderStyle = "border-blue-500"}}
+	on:dragenter|preventDefault={() => {borderStyle = "border-blue-500"}}
+	on:dragexit|preventDefault={() => {borderStyle = "border-zinc-800"}}
+	on:dragleave|preventDefault={() => {borderStyle = "border-zinc-800"}}
 	on:drop|preventDefault={(event) => drop(event)}
 >
 	<div class="flex flex-col items-center space-y-10">
@@ -557,7 +559,7 @@
 			</div>
 			{/if}
 			<div
-				class="bg-zinc-950 border-zinc-800 {page == 0 ? "border-2 rounded-xl" : "border-b-2 border-l-2 border-r-2 rounded-b-xl"} p-3 max-h-[50%] overflow-y-auto styled-scrollbar relative max-w-screen-lg"
+				class="bg-zinc-950 {borderStyle} {page == 0 ? "border-2 rounded-xl" : "border-b-2 border-l-2 border-r-2 rounded-b-xl"} p-3 max-h-[50%] overflow-y-auto styled-scrollbar relative max-w-screen-lg"
 				use:autoAnimate
 				bind:this={body}
 			>
@@ -949,6 +951,15 @@
 			{/if}
 		</div>
 	</div>
+</div>
+
+<div class="fixed top-0 left-0 w-screen h-screen {is_drag ? "" : "pointer-events-none"}" 
+	on:dragover|preventDefault={() => {borderStyle = "border-blue-500"; is_drag = true}}
+	on:dragenter|preventDefault={() => {borderStyle = "border-blue-500"; is_drag = true}}
+	on:dragexit|preventDefault={() => {borderStyle = "border-zinc-800"; is_drag = false}}
+	on:dragleave|preventDefault={() => {borderStyle = "border-zinc-800"; is_drag = false}}
+	on:drop|preventDefault={(event) => {drop(event); is_drag = false}}>
+
 </div>
 
 <footer class="fixed bottom-3 left-3 pr-7 text-zinc-500 flex w-full justify-between">
