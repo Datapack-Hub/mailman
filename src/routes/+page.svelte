@@ -19,6 +19,7 @@
 	import IconPlus from '~icons/tabler/Plus.svelte';
 	import IconUpload from '~icons/tabler/Upload.svelte';
 	import IconVersions from '~icons/tabler/Versions.svelte';
+	import { minecraftVersions, getDataPackVersion, getAllReleases } from '$lib/globals/versions';
 
 	let borderStyle = "border-zinc-800"
 	let is_drag =false
@@ -386,7 +387,7 @@
 				name: title,
 				version_number: versionCode,
 				changelog: changelog,
-				game_versions: mcVersions,
+				game_versions: generate_modrinth_versions(mcVersions),
 				loaders: ["datapack"],
 				featured: true,
 				project_id: selectedModPack,
@@ -484,28 +485,16 @@
 		dpfile = dpFileInput.files?.item(0);
 	}
 
-	const minecraftVersions = [
-		{"format":4,"label":"1.13"},
-		{"format":5,"label":"1.15"},
-		{"format":6,"label":"1.16.2"},
-		{"format":7,"label":"1.17"},
-		{"format":8,"label":"1.18"},
-		{"format":9,"label":"1.18.2"},
-		{"format":10,"label":"1.19"},
-		{"format":12,"label":"1.19.4"},
-		{"format":15,"label":"1.20"},
-		{"format":18,"label":"1.20.2"},
-		{"format":26,"label":"1.20.3"},
-	];
-
-	const generate_datapackhub_versions = function(selected: Array<string>) {return selected.map(i => {if(i == "1.17") {return "1.17.x"} else return i })}
+	const generate_datapackhub_versions = function(selected: Array<string>) {
+		return selected.map(i => getDataPackVersion(i));
+	}
 
 	const generate_smithed_versions = function(selected: Array<string>) {
-		let temp = selected
-		if(temp.includes("1.17")) temp.push("1.17.1")
-		if(temp.includes("1.18")) temp.push("1.18.1")
-		if(temp.includes("1.20")) temp.push("1.20.1")
-		return temp
+		return selected.flatMap(i => getAllReleases(getDataPackVersion(i), true));
+	}
+
+	const generate_modrinth_versions = function(selected: Array<string>) {
+		return selected.flatMap(i => getAllReleases(getDataPackVersion(i), false));
 	}
 </script>
 
